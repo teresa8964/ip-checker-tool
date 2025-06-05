@@ -1,0 +1,66 @@
+<!DOCTYPE html>  
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>批量IP可用性检测工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;  
+      margin: 30px auto;  
+      padding: 20px;  
+      border-radius: 10px;  
+      background-color: #f4f4f4;  
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>批量IP可用性检测工具</h2>
+  <p>请输入你要检测的IP地址，每行一个：</p>
+  <textarea id="ipList" placeholder="例如：\n8.212.65.162\n47.242.121.232\n..."></textarea>
+  <button onclick="checkIPs()">开始检测</button>  
+  <div class="result" id="resultBox"></div>
+
+  <script>
+    async function checkIPs() {
+      const resultBox = document.getElementById('resultBox');
+      resultBox.textContent = '正在检测，请稍候...';
+      const ips = document.getElementById('ipList').value.trim().split(/\n|\r/).filter(Boolean);
+
+      let result = '';
+
+      for (const ip of ips) {
+        try {
+          const res = await fetch("http://" + ip, { method: 'GET', mode: 'no-cors' });  
+          result += `${ip} 可能可以访问（已发送请求）\n`;
+        } catch (e) {
+          result += `${ip} 无法访问或被阻止\n`;
+        }
+      }
+
+      resultBox.textContent = result;
+    }
+  </script>
+</body>  
+</html>

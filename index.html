@@ -1,4 +1,4 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
@@ -7,11 +7,11 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;  
-      margin: 30px auto;  
-      padding: 20px;  
-      border-radius: 10px;  
-      background-color: #f4f4f4;  
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #f4f4f4;
     }
     textarea {
       width: 100%;
@@ -39,10 +39,28 @@
   <h2>批量IP可用性检测工具</h2>
   <p>请输入你要检测的IP地址，每行一个：</p>
   <textarea id="ipList" placeholder="例如：\n8.212.65.162\n47.242.121.232\n..."></textarea>
-  <button onclick="checkIPs()">开始检测</button>  
+  <button onclick="checkIPs()">开始检测</button>
   <div class="result" id="resultBox"></div>
 
   <script>
+    function pingPort(ip, port, timeout = 3000) {
+      return new Promise((resolve) => {
+        const controller = new AbortController();
+        const signal = controller.signal;
+        setTimeout(() => controller.abort(), timeout);
+
+        fetch(`http://${ip}:${port}`, {
+          method: 'GET',
+          mode: 'no-cors',
+          signal
+        }).then(() => {
+          resolve({ port, open: true });
+        }).catch(() => {
+          resolve({ port, open: false });
+        });
+      });
+    }
+
     async function checkIPs() {
       const resultBox = document.getElementById('resultBox');
       resultBox.textContent = '正在检测，请稍候...';
@@ -51,16 +69,44 @@
       let result = '';
 
       for (const ip of ips) {
+        result += `【${ip}】\n`;
+        const ports = await Promise.all([pingPort(ip, 80), pingPort(ip, 443)]);
+
+        ports.forEach(p => {
+          result += `端口 ${p.port}: ${p.open ? '开放' : '关闭'}\n`;
+        });
+
         try {
-          const res = await fetch("http://" + ip, { method: 'GET', mode: 'no-cors' });  
-          result += `${ip} 可能可以访问（已发送请求）\n`;
-        } catch (e) {
-          result += `${ip} 无法访问或被阻止\n`;
+          const controller = new AbortController();
+          const signal = controller.signal;
+          const start = performance.now();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+
+          await fetch(`https://${ip}`, { method: 'GET', mode: 'no-cors', signal });
+
+          const end = performance.now();
+          clearTimeout(timeout);
+          result += `延迟估算: ${(end - start).toFixed(0)} ms\n`;
+        } catch {
+          result += `无法估算延迟或连接失败\n`;
         }
+
+        // 测试 X（twitter.com）代理效果
+        try {
+          const res = await fetch(`https://${ip}/?target=twitter.com`, {
+            method: 'GET',
+            mode: 'no-cors'
+          });
+          result += `尝试访问 X：已发送请求（可能成功）\n`;
+        } catch {
+          result += `尝试访问 X：失败或被阻止\n`;
+        }
+
+        result += `\n`;
       }
 
       resultBox.textContent = result;
     }
   </script>
-</body>  
+</body>
 </html>
